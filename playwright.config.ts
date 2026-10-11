@@ -11,30 +11,32 @@ export default defineConfig({
 
   workers: process.env.CI ? 1 : undefined,
 
-  reporter: "html",
+  reporter: [
+    ["html", {
+      outputFolder: "playwright-report",
+      open: "never",
+    }],
+  ],
+
   outputDir: "test-results",
 
   projects: [
     {
       name: "api",
-
       testMatch: "**/restful_booker/**/*.spec.ts",
-
       use: {
         baseURL: "https://restful-booker.herokuapp.com",
-        trace: "retain-on-failure"
+        trace: "retain-on-failure",
       },
     },
 
     {
       name: "saucedemo",
-
       testMatch: "**/sauce_demo/**/*.spec.ts",
-
       use: {
         ...devices["Desktop Chrome"],
         baseURL: "https://www.saucedemo.com/",
-        trace: "on-first-retry",
+        trace: "retain-on-failure",
       },
     },
   ],

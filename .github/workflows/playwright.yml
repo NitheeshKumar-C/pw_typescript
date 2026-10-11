@@ -1,3 +1,4 @@
+
 name: Playwright Tests
 
 on:
@@ -20,6 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    outputs:
+      pages_artifact_uploaded: ${{ steps.upload-pages.outcome == 'success' }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,7 +31,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 12.6.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -46,20 +50,22 @@ jobs:
         env:
           CI: true
 
-      - name: Upload HTML report for GitHub Pages
+      - name: Upload Pages artifact
+        id: upload-pages
         if: >-
           ${{
             always() &&
             !cancelled() &&
             github.event_name != 'pull_request' &&
             (github.ref == 'refs/heads/main' ||
-             github.ref == 'refs/heads/master')
+             github.ref == 'refs/heads/master') &&
+            hashFiles('playwright-report/**') != ''
           }}
         uses: actions/upload-pages-artifact@v4
         with:
           path: playwright-report/
 
-      - name: Upload HTML report artifact
+      - name: Upload HTML report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
@@ -89,82 +95,52 @@ jobs:
          github.ref == 'refs/heads/master')
       }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
     permissions:
       actions: write
       contents: read
 
     steps:
-      - name: Install GitHub CLI
-        run: |
-          gh --version
-
-      - name: Remove artifacts from older runs
+      - name: Keep artifacts from latest 4 runs
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           CURRENT_RUN_ID: ${{ github.run_id }}
           BRANCH: ${{ github.ref_name }}
-          WORKFLOW_NAME: ${{ github.workflow }}
+          WORKFLOW_FILE: playwright.yml
         shell: bash
         run: |
           set -euo pipefail
 
-          echo "Finding recent runs for '$WORKFLOW_NAME' on '$BRANCH'..."
-
           recent_runs="$(
             gh run list \
               --repo "$REPO" \
-              --workflow "$WORKFLOW_NAME" \
+              --workflow "$WORKFLOW_FILE" \
               --branch "$BRANCH" \
               --limit 1000 \
               --json databaseId \
               --jq '.[].databaseId'
           )"
 
-          # Put this run first, then remove duplicate run IDs.
           all_runs="$(
             printf '%s\n%s\n' "$CURRENT_RUN_ID" "$recent_runs" |
               awk 'NF && !seen[$0]++'
           )"
 
-          # Keep the newest four runs, including this run.
-          keep_runs="$(printf '%s\n' "$all_runs" | head -n 4)"
+          printf '%s\n' "$all_runs" |
+            tail -n +5 |
+            while IFS= read -r old_run_id; do
+              [ -n "$old_run_id" ] || continue
 
-          echo "Runs whose artifacts will be retained:"
-          printf '%s\n' "$keep_runs"
-
-          # Delete artifacts only from older runs of this workflow
-          # on the current branch.
-          printf '%s\n' "$all_runs" | tail -n +5 |
-          while IFS= read -r old_run_id; do
-            [ -n "$old_run_id" ] || continue
-
-            echo "Checking artifacts for old run: $old_run_id"
-
-            artifact_ids="$(
               gh api --paginate \
                 "repos/$REPO/actions/runs/$old_run_id/artifacts?per_page=100" \
-                --jq '.artifacts[].id'
-            )"
-
-            if [ -z "$artifact_ids" ]; then
-              echo "No artifacts found for run $old_run_id"
-              continue
-            fi
-
-            while IFS= read -r artifact_id; do
-              [ -n "$artifact_id" ] || continue
-
-              echo "Deleting artifact $artifact_id from run $old_run_id"
-
-              gh api --method DELETE \
-                "repos/$REPO/actions/artifacts/$artifact_id"
-            done <<< "$artifact_ids"
-          done
-
-          echo "Artifact cleanup completed."
+                --jq '.artifacts[].id' |
+                while IFS= read -r artifact_id; do
+                  [ -n "$artifact_id" ] || continue
+                  echo "Deleting artifact $artifact_id from run $old_run_id"
+                  gh api --method DELETE \
+                    "repos/$REPO/actions/artifacts/$artifact_id"
+                done
+            done
 
   deploy-report:
     name: Deploy HTML Report to GitHub Pages
@@ -172,13 +148,12 @@ jobs:
     if: >-
       ${{
         always() &&
-        needs.test.result != 'cancelled' &&
+        needs.test.outputs.pages_artifact_uploaded == 'true' &&
         github.event_name != 'pull_request' &&
         (github.ref == 'refs/heads/main' ||
          github.ref == 'refs/heads/master')
       }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
 
     permissions:
       pages: write
