@@ -1,0 +1,34 @@
+{
+	"name": "pw_typescript",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "playwright test",
+		"test:api": "playwright test --project=api",
+		"test:ui": "playwright test --project=saucedemo",
+		"test:api:headed": "playwright test --project=api --headed",
+		"test:ui:headed": "playwright test --project=saucedemo --headed",
+		"test:list": "playwright test --list",
+		"test:report": "playwright show-report"
+	},
+	"keywords": [],
+	"author": "",
+
+	"license": "ISC",
+	"devEngines": {
+		"packageManager": {
+			"name": "pnpm",
+			"version": "12.6.0",
+			"onFail": "download"
+		}
+	},
+	"packageManager": "pnpm@12.6.0",
+	"type": "module",
+	"devDependencies": {
+		"@biomejs/biome": "2.5.14",
+		"@faker-js/faker": "^10.6.0",
+		"@playwright/test": "^1.63.0",
+		"@types/node": "^26.6.2"
+	}
+}
