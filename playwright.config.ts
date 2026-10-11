@@ -12,6 +12,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
 
   reporter: "html",
+  outputDir: "test-results",
 
   projects: [
     {
