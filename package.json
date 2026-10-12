@@ -10,11 +10,14 @@
 		"test:api:headed": "playwright test --project=api --headed",
 		"test:ui:headed": "playwright test --project=saucedemo --headed",
 		"test:list": "playwright test --list",
-		"test:report": "playwright show-report"
+		"test:report": "playwright show-report",
+		"test:allure": "playwright test",
+		"allure:generate": "allure generate allure-results",
+		"allure:open": "allure open allure-report",
+		"allure:serve": "allure serve allure-results"
 	},
 	"keywords": [],
 	"author": "",
-
 	"license": "ISC",
 	"devEngines": {
 		"packageManager": {
@@ -29,6 +32,8 @@
 		"@biomejs/biome": "2.5.14",
 		"@faker-js/faker": "^10.6.0",
 		"@playwright/test": "^1.63.0",
-		"@types/node": "^26.6.2"
+		"@types/node": "^26.6.2",
+		"allure": "^3.20.1",
+		"allure-playwright": "^3.13.0"
 	}
 }

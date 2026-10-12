@@ -12,10 +12,15 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
 
   reporter: [
-    ["html", {
-      outputFolder: "playwright-report",
-      open: "never",
-    }],
+    ["list"],
+    [
+      "allure-playwright",
+      {
+        resultsDir: "allure-results",
+        detail: true,
+        suiteTitle: true,
+      },
+    ],
   ],
 
   outputDir: "test-results",

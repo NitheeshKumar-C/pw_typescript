@@ -46,55 +46,69 @@ jobs:
         run: pnpm exec playwright install --with-deps
 
       - name: Run Playwright tests
-        run: pnpm exec playwright test
+        run: pnpm test:allure
         env:
           CI: true
 
-      - name: Upload Pages artifact
-        id: upload-pages
-        if: >-
-          ${{
-            always() &&
-            !cancelled() &&
-            github.event_name != 'pull_request' &&
-            (github.ref == 'refs/heads/main' ||
-             github.ref == 'refs/heads/master') &&
-            hashFiles('playwright-report/**') != ''
-          }}
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: playwright-report/
+      - name: Generate Allure HTML report
+        if: ${{ !cancelled() &amp;&amp; hashFiles('allure-results/**') != '' }}
+        run: pnpm allure:generate
 
-      - name: Upload HTML report
+      - name: Upload Allure HTML report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 90
+          name: allure-report
+          path: allure-report/
+          retention-days: 3
           if-no-files-found: ignore
 
-      - name: Upload test results and traces
+      - name: Upload Allure raw results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results/
+          retention-days: 3
+          if-no-files-found: ignore
+
+      - name: Upload Playwright test results and traces
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-test-results
           path: test-results/
-          retention-days: 90
+          retention-days: 3
           if-no-files-found: ignore
+
+      - name: Upload GitHub Pages artifact
+        id: upload-pages
+        if: &gt;-
+          ${{
+            always() &amp;&amp;
+            !cancelled() &amp;&amp;
+            github.event_name != 'pull_request' &amp;&amp;
+            (github.ref == 'refs/heads/main' ||
+             github.ref == 'refs/heads/master') &amp;&amp;
+            hashFiles('allure-report/**') != ''
+          }}
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: allure-report/
 
   cleanup-artifacts:
     name: Keep Artifacts From Latest 4 Runs
     needs: test
-    if: >-
+    if: &gt;-
       ${{
-        always() &&
-        needs.test.result != 'cancelled' &&
-        github.event_name != 'pull_request' &&
+        always() &amp;&amp;
+        needs.test.result != 'cancelled' &amp;&amp;
+        github.event_name != 'pull_request' &amp;&amp;
         (github.ref == 'refs/heads/main' ||
          github.ref == 'refs/heads/master')
       }}
     runs-on: ubuntu-latest
+
     permissions:
       actions: write
       contents: read
@@ -123,7 +137,7 @@ jobs:
 
           all_runs="$(
             printf '%s\n%s\n' "$CURRENT_RUN_ID" "$recent_runs" |
-              awk 'NF && !seen[$0]++'
+              awk 'NF &amp;&amp; !seen[$0]++'
           )"
 
           printf '%s\n' "$all_runs" |
@@ -136,20 +150,22 @@ jobs:
                 --jq '.artifacts[].id' |
                 while IFS= read -r artifact_id; do
                   [ -n "$artifact_id" ] || continue
+
                   echo "Deleting artifact $artifact_id from run $old_run_id"
+
                   gh api --method DELETE \
                     "repos/$REPO/actions/artifacts/$artifact_id"
                 done
             done
 
   deploy-report:
-    name: Deploy HTML Report to GitHub Pages
+    name: Deploy Allure Report to GitHub Pages
     needs: test
-    if: >-
+    if: &gt;-
       ${{
-        always() &&
-        needs.test.outputs.pages_artifact_uploaded == 'true' &&
-        github.event_name != 'pull_request' &&
+        always() &amp;&amp;
+        needs.test.outputs.pages_artifact_uploaded == 'true' &amp;&amp;
+        github.event_name != 'pull_request' &amp;&amp;
         (github.ref == 'refs/heads/main' ||
          github.ref == 'refs/heads/master')
       }}
@@ -164,6 +180,6 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Deploy report
+      - name: Deploy Allure Report
         id: deployment
         uses: actions/deploy-pages@v4
