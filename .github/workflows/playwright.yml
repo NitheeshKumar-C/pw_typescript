@@ -51,7 +51,9 @@ jobs:
 
       - name: Generate Allure HTML report
         if: ${{ !cancelled() && hashFiles('allure-results/**') != '' }}
-        run: pnpm allure:generate
+        run: |
+          rm -rf allure-report
+          pnpm allure:generate
 
       - name: Upload Allure HTML report
         if: ${{ !cancelled() }}
