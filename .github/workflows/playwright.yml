@@ -1,4 +1,3 @@
-
 name: Playwright Tests
 
 on:
@@ -51,7 +50,7 @@ jobs:
           CI: true
 
       - name: Generate Allure HTML report
-        if: ${{ !cancelled() &amp;&amp; hashFiles('allure-results/**') != '' }}
+        if: ${{ !cancelled() && hashFiles('allure-results/**') != '' }}
         run: pnpm allure:generate
 
       - name: Upload Allure HTML report
@@ -83,13 +82,12 @@ jobs:
 
       - name: Upload GitHub Pages artifact
         id: upload-pages
-        if: &gt;-
+        if: >-
           ${{
-            always() &amp;&amp;
-            !cancelled() &amp;&amp;
-            github.event_name != 'pull_request' &amp;&amp;
+            !cancelled() &&
+            github.event_name != 'pull_request' &&
             (github.ref == 'refs/heads/main' ||
-             github.ref == 'refs/heads/master') &amp;&amp;
+             github.ref == 'refs/heads/master') &&
             hashFiles('allure-report/**') != ''
           }}
         uses: actions/upload-pages-artifact@v4
@@ -99,11 +97,10 @@ jobs:
   cleanup-artifacts:
     name: Keep Artifacts From Latest 4 Runs
     needs: test
-    if: &gt;-
+    if: >-
       ${{
-        always() &amp;&amp;
-        needs.test.result != 'cancelled' &amp;&amp;
-        github.event_name != 'pull_request' &amp;&amp;
+        !cancelled() &&
+        github.event_name != 'pull_request' &&
         (github.ref == 'refs/heads/main' ||
          github.ref == 'refs/heads/master')
       }}
@@ -131,13 +128,13 @@ jobs:
               --workflow "$WORKFLOW_FILE" \
               --branch "$BRANCH" \
               --limit 1000 \
-              --json databaseId \
-              --jq '.[].databaseId'
+              --json databaseId,createdAt \
+              --jq 'sort_by(.createdAt) | reverse | .[].databaseId'
           )"
 
           all_runs="$(
             printf '%s\n%s\n' "$CURRENT_RUN_ID" "$recent_runs" |
-              awk 'NF &amp;&amp; !seen[$0]++'
+              awk 'NF && !seen[$0]++'
           )"
 
           printf '%s\n' "$all_runs" |
@@ -161,11 +158,11 @@ jobs:
   deploy-report:
     name: Deploy Allure Report to GitHub Pages
     needs: test
-    if: &gt;-
+    if: >-
       ${{
-        always() &amp;&amp;
-        needs.test.outputs.pages_artifact_uploaded == 'true' &amp;&amp;
-        github.event_name != 'pull_request' &amp;&amp;
+        !cancelled() &&
+        needs.test.outputs.pages_artifact_uploaded == 'true' &&
+        github.event_name != 'pull_request' &&
         (github.ref == 'refs/heads/main' ||
          github.ref == 'refs/heads/master')
       }}
